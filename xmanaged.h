@@ -98,14 +98,15 @@
 	/// <summary>free()'s a block of managed memory.</summary>
 	void xfree(void* alloc) {
 		if (alloc == NULL) return;
-		size_t position = -1;
+		size_t position = 0;
+		int found = -1;
 		for (size_t i = 0; i < managedalloc_source.count; i++) {
 			if (managedalloc_source.alloc[i] == alloc) {
-				position = i;
+				found = position = i;
 				break;
 			}
 		}
-		if (position < 0) return;
+		if (found < 0) return;
 		free(alloc);
 
 		for (size_t i = position; i < managedalloc_source.count-1; i++) {
