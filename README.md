@@ -1,4 +1,4 @@
-# xmanaged
+# xmanaged (C)
 C library will track pointer allocations to reduce potential memory leaks errors in applications.
 
 * `xmanaged()` initializes the library.
