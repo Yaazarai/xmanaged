@@ -24,7 +24,7 @@
 
 	/// <summary>Free's up the entire managed memory system.</summary>
 	void xunmanaged() {
-		for (int i = 0; i < managedalloc_source.count; i++)
+		for (int i = 0; i < managedalloc_source.length; i++)
 			free(managedalloc_source.alloc[i]);
 
 		free(managedalloc_source.alloc);
@@ -41,7 +41,7 @@
 		size_t pntrlen = length * typesize;
 		if (pntrlen == 0) return NULL;
 
-		if (managedalloc_source.count >= length) {
+		if (managedalloc_source.count >= managedalloc_source.length) {
 			void** newalloc = (void**) malloc(managedalloc_source.count * 2L * sizeof(void*));
 			size_t* newsizes = (size_t*) malloc(managedalloc_source.count * 2L * sizeof(size_t));
 			
@@ -57,7 +57,7 @@
 			free(managedalloc_source.sizes);
 			managedalloc_source.alloc = newalloc;
 			managedalloc_source.sizes = newsizes;
-			managedalloc_source.length = managedalloc_source.count * 2;
+			managedalloc_source.length = managedalloc_source.length * 2;
 		}
 		
 		size_t position = managedalloc_source.count;
