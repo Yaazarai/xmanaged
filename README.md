@@ -1,5 +1,5 @@
 # xmanaged
-This library will track pointer allocations to reduce potential memory leaks errors in applications.
+C library will track pointer allocations to reduce potential memory leaks errors in applications.
 
 * `xmanaged()` initializes the library.
 * `xunmanaged()` un-initializes the library and free's any remaining managed allocations.
