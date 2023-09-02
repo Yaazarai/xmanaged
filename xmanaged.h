@@ -24,7 +24,7 @@
 
 	/// <summary>Free's up the entire managed memory system.</summary>
 	void xunmanaged() {
-		for (int i = 0; i < managedalloc_source.count; i++)
+		for (size_t i = 0; i < managedalloc_source.count; i++)
 			free(managedalloc_source.alloc[i]);
 
 		free(managedalloc_source.alloc);
@@ -86,7 +86,6 @@
 				if (newmem != NULL) {
 					managedalloc_source.alloc[i] = newmem;
 					managedalloc_source.sizes[i] = length;
-					return newmem;
 				}
 				return newmem;
 			}
@@ -98,24 +97,20 @@
 	/// <summary>free()'s a block of managed memory.</summary>
 	void xfree(void* alloc) {
 		if (alloc == NULL) return;
-		size_t position = 0, found = 0;
 		for (size_t i = 0; i < managedalloc_source.count; i++) {
 			if (managedalloc_source.alloc[i] == alloc) {
-				position = i;
-				found = 1;
-				break;
+				free(alloc);
+
+				for (size_t j = i; j < managedalloc_source.count-1; j++) {
+					managedalloc_source.alloc[j] = managedalloc_source.alloc[j+1L];
+					managedalloc_source.sizes[j] = managedalloc_source.sizes[j+1L];
+				}
+				managedalloc_source.count --;
+				managedalloc_source.alloc[managedalloc_source.count] = NULL;
+				managedalloc_source.sizes[managedalloc_source.count] = 0;
+				return;
 			}
 		}
-		if (found == 0) return;
-		free(alloc);
-
-		for (size_t i = position; i < managedalloc_source.count-1; i++) {
-			managedalloc_source.alloc[i] = managedalloc_source.alloc[i+1L];
-			managedalloc_source.sizes[i] = managedalloc_source.sizes[i+1L];
-		}
-		managedalloc_source.count --;
-		managedalloc_source.alloc[managedalloc_source.count] = NULL;
-		managedalloc_source.sizes[managedalloc_source.count] = 0;
 	}
 
 	/// <summary>Returns the byte-length of an allocation.</summary>
