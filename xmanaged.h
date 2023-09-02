@@ -2,6 +2,7 @@
 #ifndef MANAGED_ALLOC_LIBRARY
 #define MANAGED_ALLOC_LIBRARY
 	#include <stdlib.h>
+	#include <string.h>
 	#define ALLOC_BUCKET_DEFAULT 32
 
 	struct managed_alloc {
@@ -28,7 +29,6 @@
 
 		free(managedalloc_source.alloc);
 		free(managedalloc_source.sizes);
-		
 		managedalloc_source.alloc = NULL;
 		managedalloc_source.sizes = NULL;
 		managedalloc_source.length = 0;
