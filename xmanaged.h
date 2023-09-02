@@ -15,8 +15,8 @@
 
 	/// <summary>Inits the managed memory system.</summary>
 	void xmanaged() {
-		managedalloc_source.alloc = (void**) malloc(ALLOC_BUCKET_DEFAULT * sizeof(void*));
-		managedalloc_source.sizes = (size_t*) malloc(ALLOC_BUCKET_DEFAULT * sizeof(size_t));
+		managedalloc_source.alloc = (void**) calloc(ALLOC_BUCKET_DEFAULT, sizeof(void*));
+		managedalloc_source.sizes = (size_t*) calloc(ALLOC_BUCKET_DEFAULT, sizeof(size_t));
 		managedalloc_source.length = ALLOC_BUCKET_DEFAULT;
 		managedalloc_source.count = 0;
 		managedalloc_source.init = INT_MAX;
@@ -24,7 +24,7 @@
 
 	/// <summary>Free's up the entire managed memory system.</summary>
 	void xunmanaged() {
-		for (int i = 0; i < managedalloc_source.length; i++)
+		for (int i = 0; i < managedalloc_source.count; i++)
 			free(managedalloc_source.alloc[i]);
 
 		free(managedalloc_source.alloc);
@@ -42,8 +42,8 @@
 		if (pntrlen == 0) return NULL;
 
 		if (managedalloc_source.count >= managedalloc_source.length) {
-			void** newalloc = (void**) malloc(managedalloc_source.count * 2L * sizeof(void*));
-			size_t* newsizes = (size_t*) malloc(managedalloc_source.count * 2L * sizeof(size_t));
+			void** newalloc = (void**) calloc(managedalloc_source.count * 2L, sizeof(void*));
+			size_t* newsizes = (size_t*) calloc(managedalloc_source.count * 2L, sizeof(size_t));
 			
 			if (newalloc == NULL || newsizes == NULL) {
 				free(newalloc);
