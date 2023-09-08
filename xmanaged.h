@@ -24,8 +24,15 @@
 
 	/// <summary>Free's up the entire managed memory system.</summary>
 	void xunmanaged() {
-		for (size_t i = 0; i < managedalloc_source.count; i++)
-			free(managedalloc_source.alloc[i]);
+		for (size_t i = 0; i < managedalloc_source.count; i++) {
+			
+			#if TINYVK_VALIDATION == VK_TRUE
+			if (managedalloc_source.alloc[i] != NULL)
+				printf("xmanaged-leaks: %p, %zu\n", managedalloc_source.alloc[i], managedalloc_source.sizes[i]);
+			#endif
+			if (managedalloc_source.alloc[i] != NULL)
+				free(managedalloc_source.alloc[i]);
+		}
 
 		free(managedalloc_source.alloc);
 		free(managedalloc_source.sizes);
@@ -41,9 +48,20 @@
 		size_t pntrlen = length * typesize;
 		if (pntrlen == 0) return NULL;
 
+		bool_t resize = false;
+		size_t alloclength = 0;
 		if (managedalloc_source.count >= managedalloc_source.length) {
-			void** newalloc = (void**) calloc(managedalloc_source.count * 2L, sizeof(void*));
-			size_t* newsizes = (size_t*) calloc(managedalloc_source.count * 2L, sizeof(size_t));
+			alloclength = managedalloc_source.length * 2;
+			resize = true;
+		} else if (managedalloc_source.count < (managedalloc_source.length / 2)) {
+			alloclength = managedalloc_source.length / 2;
+			resize = (alloclength > ALLOC_BUCKET_DEFAULT);
+			alloclength = (alloclength > ALLOC_BUCKET_DEFAULT)? alloclength : ALLOC_BUCKET_DEFAULT;
+		}
+
+		if (resize) {
+			void** newalloc = (void**) calloc(alloclength, sizeof(void*));
+			size_t* newsizes = (size_t*) calloc(alloclength, sizeof(size_t));
 			
 			if (newalloc == NULL || newsizes == NULL) {
 				free(newalloc);
@@ -51,13 +69,13 @@
 				return NULL;
 			}
 
-			memcpy(newalloc, &managedalloc_source.alloc, managedalloc_source.count);
-			memcpy(newsizes, &managedalloc_source.sizes, managedalloc_source.count);
+			memcpy(newalloc, &managedalloc_source.alloc, managedalloc_source.count * sizeof(void*));
+			memcpy(newsizes, &managedalloc_source.sizes, managedalloc_source.count * sizeof(size_t));
 			free(managedalloc_source.alloc);
 			free(managedalloc_source.sizes);
 			managedalloc_source.alloc = newalloc;
 			managedalloc_source.sizes = newsizes;
-			managedalloc_source.length = managedalloc_source.length * 2;
+			managedalloc_source.length  = alloclength;
 		}
 		
 		size_t position = managedalloc_source.count;
@@ -105,12 +123,14 @@
 					managedalloc_source.alloc[j] = managedalloc_source.alloc[j+1L];
 					managedalloc_source.sizes[j] = managedalloc_source.sizes[j+1L];
 				}
-				managedalloc_source.count --;
-				managedalloc_source.alloc[managedalloc_source.count] = NULL;
-				managedalloc_source.sizes[managedalloc_source.count] = 0;
-				return;
+
+				break;
 			}
 		}
+
+		managedalloc_source.count --;
+		managedalloc_source.alloc[managedalloc_source.count] = NULL;
+		managedalloc_source.sizes[managedalloc_source.count] = 0;
 	}
 
 	/// <summary>Returns the byte-length of an allocation.</summary>
