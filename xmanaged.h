@@ -3,9 +3,11 @@
 #define MANAGED_ALLOC_LIBRARY
 	#include <stdlib.h>
 	#include <string.h>
+	#include <windows.h>
 	#define ALLOC_BUCKET_DEFAULT 32
 
 	struct managed_alloc {
+		HANDLE mutex;
 		size_t length;
 		size_t count;
 		size_t init;
@@ -20,19 +22,16 @@
 		managedalloc_source.length = ALLOC_BUCKET_DEFAULT;
 		managedalloc_source.count = 0;
 		managedalloc_source.init = INT_MAX;
+		managedalloc_source.mutex = CreateMutex(NULL, FALSE, NULL);
 	}
 
 	/// <summary>Free's up the entire managed memory system.</summary>
 	void xunmanaged() {
-		for (size_t i = 0; i < managedalloc_source.count; i++) {
-			
-			#if TINYVK_VALIDATION == VK_TRUE
-			if (managedalloc_source.alloc[i] != NULL)
-				printf("xmanaged-leaks: %p, %zu\n", managedalloc_source.alloc[i], managedalloc_source.sizes[i]);
-			#endif
+		WaitForSingleObject(managedalloc_source.mutex, INFINITE);
+		
+		for (size_t i = 0; i < managedalloc_source.count; i++)
 			if (managedalloc_source.alloc[i] != NULL)
 				free(managedalloc_source.alloc[i]);
-		}
 
 		free(managedalloc_source.alloc);
 		free(managedalloc_source.sizes);
@@ -41,12 +40,15 @@
 		managedalloc_source.length = 0;
 		managedalloc_source.count = 0;
 		managedalloc_source.init = 0;
+
+		ReleaseMutex(managedalloc_source.mutex);
 	}
 
 	/// <summary>calloc()/malloc()'s a block of managed memory. If raw==0, calloc, else, malloc.</summary>
 	void* xalloc(size_t length, size_t typesize, int raw) {
 		size_t pntrlen = length * typesize;
 		if (pntrlen == 0) return NULL;
+		WaitForSingleObject(managedalloc_source.mutex, INFINITE);
 
 		bool_t resize = false;
 		size_t alloclength = 0;
@@ -66,6 +68,8 @@
 			if (newalloc == NULL || newsizes == NULL) {
 				free(newalloc);
 				free(newsizes);
+
+				ReleaseMutex(managedalloc_source.mutex);
 				return NULL;
 			}
 
@@ -82,6 +86,8 @@
 		managedalloc_source.alloc[position] = (raw==0)?calloc(length, typesize):malloc(pntrlen);
 		managedalloc_source.sizes[position] = pntrlen;
 		managedalloc_source.count ++;
+
+		ReleaseMutex(managedalloc_source.mutex);
 		return managedalloc_source.alloc[position];
 	}
 
@@ -98,6 +104,8 @@
 	/// <summary>realloc()'s a block of managed memory.</summary>
 	void* xrealloc(void* alloc, size_t length) {
 		if (length == 0) return NULL;
+		WaitForSingleObject(managedalloc_source.mutex, INFINITE);
+		
 		for (size_t i = 0; i < managedalloc_source.count; i++) {
 			if (managedalloc_source.alloc[i] == alloc) {
 				void* newmem = realloc(alloc, length);
@@ -105,16 +113,21 @@
 					managedalloc_source.alloc[i] = newmem;
 					managedalloc_source.sizes[i] = length;
 				}
+
+				ReleaseMutex(managedalloc_source.mutex);
 				return newmem;
 			}
 		}
 
+		ReleaseMutex(managedalloc_source.mutex);
 		return xalloc(length, sizeof(char), 1);
 	}
 
 	/// <summary>free()'s a block of managed memory.</summary>
 	void xfree(void* alloc) {
 		if (alloc == NULL) return;
+		WaitForSingleObject(managedalloc_source.mutex, INFINITE);
+
 		for (size_t i = 0; i < managedalloc_source.count; i++) {
 			if (managedalloc_source.alloc[i] == alloc) {
 				free(alloc);
@@ -131,20 +144,31 @@
 		managedalloc_source.count --;
 		managedalloc_source.alloc[managedalloc_source.count] = NULL;
 		managedalloc_source.sizes[managedalloc_source.count] = 0;
+		
+		ReleaseMutex(managedalloc_source.mutex);
 	}
 
 	/// <summary>Returns the byte-length of an allocation.</summary>
 	size_t xlength(void* alloc) {
+		WaitForSingleObject(managedalloc_source.mutex, INFINITE);
+
+		size_t length = 0;
 		for (size_t i = 0; i < managedalloc_source.count; i++)
-			if (managedalloc_source.alloc[i] == alloc)
-				return managedalloc_source.sizes[i];
+			if (managedalloc_source.alloc[i] == alloc) {
+				length = managedalloc_source.sizes[i];
+				break;
+			}
 		
-		return 0;
+		ReleaseMutex(managedalloc_source.mutex);
+		return length;
 	}
 
 	/// <summary>Returns total active pointer allocations.</summary>
 	size_t xallocations() {
-		return managedalloc_source.count;
+		WaitForSingleObject(managedalloc_source.mutex, INFINITE);
+		size_t count = managedalloc_source.count;
+		ReleaseMutex(managedalloc_source.mutex);
+		return count;
 	}
 
 #endif
